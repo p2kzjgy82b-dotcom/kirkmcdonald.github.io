@@ -2,6 +2,43 @@
 
 This branch refreshes the Space Age dataset from 2.0.55 → **2.0.77** and adds a project-hygiene baseline (package.json, ESLint, Vitest, GitHub Actions CI).
 
+## 2026-06-23 — Dead code + legacy globals
+
+This pass takes the codebase from **95 lint problems** (12 errors + 83 warnings) down to **0 problems**, without weakening the strictness of the lint config — `no-undef` stays at error, `no-unused-vars` stays at warn. Every undefined-identifier was traced and resolved either as a real bug, missing import, or vendor global.
+
+**Real bugs found and fixed:**
+
+1. `simplex.js:181` — `throw new Exception("Failed to pivot.")` referenced `Exception`, which doesn't exist in JavaScript. The throw site was reachable when the LP was unbounded (no positive pivot column found), and would have surfaced as an opaque `ReferenceError: Exception is not defined` instead of the intended error. Replaced with `throw new Error("simplex: failed to pivot (unbounded LP)")` and added an explanatory comment.
+2. `priority.js:151` — `PriorityList.getDefaultArray(recipe)` referenced an undefined `recipes` global, shadowed its own `recipe` parameter inside a `for…of`, and was never called from anywhere in the codebase. Dead code masking a `no-undef` error; deleted the whole method.
+
+**Dead code removed:**
+
+3. `boxline.js` — 198-line legacy graphviz renderer, replaced by `boxline2.js` (dagre) per commit acbb234 ("Revert to dagre, graphviz is too much trouble"). Not imported by anything. Deleted entirely.
+4. `simplex.js` — three unreachable helpers (`getTestRatios`, `eliminateNegativeBases`, `getBasis`) totaling ~107 lines, plus an unused `one` import. The file shrank from 213 → 106 lines.
+5. `circlepath.js` — `frameSlope` and `lineAdjustPath` helpers (≈50 lines combined). Never called; safe deletion.
+6. `planet.js` — empty `class SurfaceProperty {}` placeholder. Deleted.
+7. `debug.js`, `display.js`, `events.js`, `building.js`, `module.js`, etc. — assorted unused local bindings (`debugTab`, `uses`, `hundred`, `r1`/`r2`, `ZOOM_SCALE`, `origX`/`origY`, etc.) and unused destructured names in `for…of` loops; some replaced with positional empties (`for (let [, x] of …)`), others outright deleted.
+8. Unused imports removed: `Totals` (item.js), `zero` (totals.js), `one` (visualize.js), `half` (factory.js, module.js), `buildingSort` (settings.js), `makeDropdown`/`addInputs` (display.js).
+
+**Missing imports added:**
+
+9. `belt.js` and `building.js` referenced the `spec` singleton as a free variable (relying on a global side-effect from script loading). Added explicit `import { spec } from "./factory.js"` to both.
+
+**Vendor globals declared:**
+
+10. `eslint.config.js` — added `Popper`, `dagre`, and `pako` as readonly globals alongside the existing `d3` entry. All three are loaded via `<script>` tags in `calc.html` from `third_party/*.min.js` and intentionally live on `window`. Also relaxed `no-unused-vars` `argsIgnorePattern` to allow d3's positional callback signature (`(event, d, i, arr)`) without forcing a `_` prefix on every line — d3 idiom, not a smell.
+
+**Method-signature args:**
+
+11. Virtual method overrides in `building.js` (`prodEffect`, `getRecipeRate`) and `module.js` (`powerEffect`) take parameters they happen not to use but must accept for polymorphic dispatch. Prefixed those with `_` to mark intentional.
+
+**Verification:**
+
+- `npm run lint` → 0 problems.
+- All 118 unit tests pass (42 dataset + 51 rational + 25 matrix).
+- Headless smoke test passes; default `advanced-circuit` target solves with 304 items / 643 recipes loaded.
+- End-to-end solver behavior unchanged: removing dead `getTestRatios`/`eliminateNegativeBases`/`getBasis` from `simplex.js` does not alter the live pivot path, and the `Exception → Error` fix only changes the error message on the (very rare) unbounded-LP code path.
+
 ## 2026-06-23 — Sparse matrix + sparse-aware simplex pivot
 
 Converts `matrix.js` from a dense row-major `Rational[rows*cols]` array to a row-oriented sparse `Map<col, Rational>[rows]` representation, and updates `simplex.js`'s pivot inner loops to iterate only over the pivot row's nonzero columns.

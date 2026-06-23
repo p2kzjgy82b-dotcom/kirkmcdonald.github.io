@@ -12,11 +12,15 @@ export default [
             globals: {
                 ...globals.browser,
                 d3: "readonly",
+                Popper: "readonly",
+                dagre: "readonly",
+                pako: "readonly",
             },
         },
         rules: {
             // Kirk's style uses lots of intentional unused params and globals.
-            "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+            // d3 callback signatures pass (event, d, i, arr) positionally; ignore those by name.
+            "no-unused-vars": ["warn", { "argsIgnorePattern": "^(_|d$|i$|event$|arr$)", "varsIgnorePattern": "^_" }],
             "no-undef": "error",
             "no-prototype-builtins": "off",
             "no-inner-declarations": "off",

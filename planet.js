@@ -13,9 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License.*/
 import { Icon } from "./icon.js"
 
-class SurfaceProperty {
-}
-
 class Planet {
     constructor(key, name, order, col, row, resources, properties) {
         this.key = key

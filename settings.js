@@ -14,7 +14,7 @@ limitations under the License.*/
 import { DEFAULT_RATE, DEFAULT_RATE_PRECISION, DEFAULT_COUNT_PRECISION, DEFAULT_FORMAT, longRateNames } from "./align.js"
 import { colorSchemes } from "./color.js"
 import { DEFAULT_TAB, clickTab, DEFAULT_VISUALIZER, visualizerType, setVisualizerType, DEFAULT_RENDER, visualizerRender, setVisualizerRender, visualizerDirection, getDefaultVisDirection, setVisualizerDirection } from "./events.js"
-import { spec, DEFAULT_PLANET, DEFAULT_BELT, DEFAULT_FUEL, buildingSort } from "./factory.js"
+import { spec, DEFAULT_PLANET, DEFAULT_BELT, DEFAULT_FUEL } from "./factory.js"
 import { getRecipeGroups } from "./groups.js"
 import { changeMod } from "./init.js"
 import { shortModules, moduleRows, moduleDropdown } from "./module.js"
@@ -385,7 +385,7 @@ function setColorScheme(schemeKey) {
 
 function renderBuildings(settings) {
     let groupSet = new Set()
-    for (let [cat, group] of spec.buildings) {
+    for (let [, group] of spec.buildings) {
         if (group.buildings.length > 1) {
             groupSet.add(group)
         }
@@ -470,7 +470,7 @@ function renderBelts(settings) {
     spec.belt = spec.belts.get(beltKey)
 
     let belts = []
-    for (let [beltKey, belt] of spec.belts) {
+    for (let [, belt] of spec.belts) {
         belts.push(belt)
     }
     let form = d3.select("#belt_selector")

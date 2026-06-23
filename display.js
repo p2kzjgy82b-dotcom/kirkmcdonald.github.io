@@ -11,7 +11,6 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.*/
-import { makeDropdown, addInputs } from "./dropdown.js"
 import { toggleIgnoreHandler } from "./events.js"
 import { spec } from "./factory.js"
 import { formatSettings } from "./fragment.js"
@@ -69,7 +68,6 @@ class BreakdownRow {
 
 function getBreakdown(item, totals) {
     let rows = []
-    let uses = []
     let found = false
     // The top half of the breakdown gives every ingredient used by every
     // recipe that produced the given item. If a given ingredient is produced
@@ -280,7 +278,6 @@ class DisplayGroup {
         }
         let len = Math.max(items.length, recipes.length)
         setlen(this.rows, len, () => new DisplayRow())
-        let hundred = Rational.from_float(100)
         for (let i = 0; i < len; i++) {
             let row = this.rows[i]
             let item = items[i] || null
@@ -521,7 +518,7 @@ export function displayItems(spec, totals) {
                 .append("tt")
                     .classed("surplus-rate", true)
             // cell 5: belt icon
-            let beltCell = row.append("td")
+            let _beltCell = row.append("td")
                 .classed("item pad belt-icon", true)
             // cell 6: belt count
             row.append("td")
@@ -530,7 +527,7 @@ export function displayItems(spec, totals) {
                     .classed("belt-count", true)
 
             // cell 7: building icon
-            let buildingCell = row.append("td")
+            let _buildingCell = row.append("td")
                 .classed("pad building building-icon leftmost right-align", true)
             // cell 8: building count
             row.append("td")
@@ -539,7 +536,7 @@ export function displayItems(spec, totals) {
                     .classed("building-count", true)
 
             // cell 9: modules
-            let moduleCell = row.append("td")
+            let _moduleCell = row.append("td")
                 .classed("pad building module module-cell", true)
 
             // cell 10: beacons
@@ -673,7 +670,7 @@ export function displayItems(spec, totals) {
     fuelRow.selectAll("tt.power")
         .text(d => {
             let rate = totals.rates.get(d.recipe)
-            let {fuel, power} = spec.getPowerUsage(d.recipe, rate)
+            let {power} = spec.getPowerUsage(d.recipe, rate)
             return `${spec.format.alignRate(power.div(spec.fuel.value))}/${spec.format.rateName}`
         })
     let electricRow = buildingRow.filter(d => d.building.fuel === null)
@@ -682,7 +679,7 @@ export function displayItems(spec, totals) {
     electricRow.selectAll("tt.power")
         .text(d => {
             let rate = totals.rates.get(d.recipe)
-            let {fuel, power} = spec.getPowerUsage(d.recipe, rate)
+            let {power} = spec.getPowerUsage(d.recipe, rate)
             totalPower = totalPower.add(power)
             return alignPower(power)
         })

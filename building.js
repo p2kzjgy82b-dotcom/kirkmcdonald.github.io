@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.*/
 import { powerRepr } from "./display.js"
+import { spec } from "./factory.js"
 import { Icon } from "./icon.js"
 import { Rational, zero, one } from "./rational.js"
 
@@ -54,7 +55,7 @@ class Building {
     canBeacon() {
         return this.moduleSlots > 0
     }
-    prodEffect(spec) {
+    prodEffect(_spec) {
         return this.prodBonus
     }
     drain() {
@@ -146,7 +147,7 @@ class OffshorePump extends Building {
     less(other) {
         return this.pumpingSpeed.less(other.pumpingSpeed)
     }
-    getRecipeRate(spec, recipe) {
+    getRecipeRate(_spec, _recipe) {
         return this.pumpingSpeed
     }
     renderTooltip() {
@@ -184,13 +185,13 @@ function launchRate(spec) {
 }
 
 class RocketLaunch extends Building {
-    getRecipeRate(spec, recipe) {
+    getRecipeRate(spec, _recipe) {
         return launchRate(spec).launch
     }
 }
 
 class RocketSilo extends Building {
-    getRecipeRate(spec, recipe) {
+    getRecipeRate(spec, _recipe) {
         return launchRate(spec).part
     }
 }

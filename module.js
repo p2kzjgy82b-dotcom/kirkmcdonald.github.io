@@ -14,7 +14,7 @@ limitations under the License.*/
 import { makeDropdown, addInputs } from "./dropdown.js"
 import { Icon, sprites } from "./icon.js"
 import { useLegacyCalculation } from "./init.js"
-import { Rational, zero, half, one } from "./rational.js"
+import { Rational, zero, one } from "./rational.js"
 import { sorted } from "./sort.js"
 
 let hundred = Rational.from_float(100)
@@ -211,7 +211,7 @@ export class ModuleSpec {
         prod = prod.add(this.building.prodEffect(spec))
         return prod
     }
-    powerEffect(spec) {
+    powerEffect(_spec) {
         let power = one
         for (let module of this.modules) {
             if (!module) {
