@@ -31,16 +31,40 @@ function neighbors(groupMap, group) {
     return result
 }
 
+// Iterative post-order DFS over the group graph. Recipe-group depth on the
+// stock Space Age 2.0.77 dataset is shallow, but the recursive form's
+// per-call frame is gratuitous and the graph could deepen with mods.
+// Stack entries are {group, expanded}: expanded=false means "push neighbors";
+// expanded=true means "all neighbors done, mark complete" (post-order).
 function visit(groupMap, group, result, seen) {
     if (result.has(group) || seen.has(group)) {
         return
     }
-    seen.add(group)
-    for (let g of neighbors(groupMap, group)) {
-        visit(groupMap, g, result, seen)
+    let stack = [{group, expanded: false}]
+    while (stack.length > 0) {
+        let frame = stack[stack.length - 1]
+        if (frame.expanded) {
+            stack.pop()
+            seen.delete(frame.group)
+            result.add(frame.group)
+            continue
+        }
+        if (result.has(frame.group) || seen.has(frame.group)) {
+            stack.pop()
+            continue
+        }
+        seen.add(frame.group)
+        frame.expanded = true
+        // Push neighbors in reverse so DFS processes them in the same
+        // forward iteration order as the original recursive form.
+        let ns = Array.from(neighbors(groupMap, frame.group))
+        for (let i = ns.length - 1; i >= 0; i--) {
+            let g = ns[i]
+            if (!result.has(g) && !seen.has(g)) {
+                stack.push({group: g, expanded: false})
+            }
+        }
     }
-    seen.delete(group)
-    result.add(group)
 }
 
 export function topoSort(groups) {

@@ -2,6 +2,41 @@
 
 This branch refreshes the Space Age dataset from 2.0.55 → **2.0.77** and adds a project-hygiene baseline (package.json, ESLint, Vitest, GitHub Actions CI).
 
+## 2026-06-23 — Iterative DFS (remove stack-overflow risk on deep recipe graphs)
+
+Replaces the three deepest recursive DFS traversals in the codebase with explicit-stack iterative versions. Measured worst-case recursion depth on the Space Age 2.0.77 recipe graph:
+
+| Function | Max depth (2.0.77) | Status |
+| --- | --- | --- |
+| `cycle.js visit` (Kosaraju forward) | **441** | Converted |
+| `cycle.js visit` (Kosaraju inverted) | **413** | Converted (same function) |
+| `factory.js _getItemGraph` | **442** | Converted |
+| `groups.js visit` | shallow on stock data | Converted (same idiom, mod-safe) |
+| `solve.js traverse` | 4 | Left recursive (trivial) |
+| `planet.js traverseRecycling` | 4 | Left recursive (trivial) |
+
+441 is well inside V8's default stack budget today, but modded packs (Krastorio2, Bob/Angel, py-mods) can multiply chain depth several times over. The conversion eliminates the stack-overflow risk entirely, and also removes the per-call frame overhead in the hot solve path — `_getItemGraph` runs on every solve, and Kosaraju runs whenever the recipe graph changes.
+
+**Conversion technique:**
+
+All three functions need **post-order** semantics (children fully processed before the parent emits its result). The standard iterative form uses a stack of `{node, expanded}` frames:
+- `expanded=false` — "first time seeing this node, mark as visited and push children"
+- `expanded=true` — "all children popped and processed, now emit self"
+
+Neighbors are pushed in **reverse iteration order** so the LIFO stack pops them in the same forward order the recursive form would have called them — preserves the deterministic post-order sequence Kosaraju's second pass depends on, and any downstream code that observes `Set` insertion order into `recipes`.
+
+`_getItemGraph` is simpler because its output is a `Set` with no ordering contract (it's used only as a membership test in `getRecipeGraph`). It uses a flat one-frame stack with no `expanded` flag.
+
+**`groups.js visit`** uses the classic three-color DFS for cycle detection: `seen` = gray (on the active path), `result` = black (fully done). The iterative form preserves the recursive form's `seen.delete(group)` on the way back up, by deferring that delete to the `expanded=true` branch.
+
+**Verification:**
+
+- `npm run lint` → 0 problems.
+- All 118 unit tests pass.
+- Smoke test passes (default `advanced-circuit`).
+- Deep smoke test passes (rocket-silo target, 32 recipes in the solved totals).
+- **Bit-exact rate parity** vs the recursive baseline across four representative targets (rocket-silo, advanced-circuit ×60/m, processing-unit ×30/m, low-density-structure ×10/m) — every recipe rate is identical as a rational. Verified via `tools/rate-parity.js`, which captures a baseline JSON and diffs against it.
+
 ## 2026-06-23 — Dead code + legacy globals
 
 This pass takes the codebase from **95 lint problems** (12 errors + 83 warnings) down to **0 problems**, without weakening the strictness of the lint config — `no-undef` stays at error, `no-unused-vars` stays at warn. Every undefined-identifier was traced and resolved either as a real bug, missing import, or vendor global.

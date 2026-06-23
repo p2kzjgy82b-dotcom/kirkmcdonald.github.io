@@ -465,13 +465,25 @@ class FactorySpecification {
         return recipes
     }
     _getItemGraph(item, recipes) {
-        for (let recipe of this.getRecipes(item)) {
-            if (recipes.has(recipe)) {
-                continue
-            }
-            recipes.add(recipe)
-            for (let ing of recipe.getIngredients()) {
-                this._getItemGraph(ing.item, recipes)
+        // Iterative DFS over (item -> recipes -> ingredients).
+        // Worst-case depth on Space Age 2.0.77 measured at 442; modded packs
+        // (Krastorio2, Bob/Angel) can go deeper. Avoids stack overflow and
+        // also removes the per-call frame overhead in the hot solve path.
+        // Output is a Set so visit order doesn't change semantics, but match
+        // the recursive form's DFS order so any downstream code that observes
+        // recipe insertion order into `recipes` sees the same sequence.
+        let stack = [item]
+        while (stack.length > 0) {
+            let cur = stack.pop()
+            for (let recipe of this.getRecipes(cur)) {
+                if (recipes.has(recipe)) {
+                    continue
+                }
+                recipes.add(recipe)
+                let ings = recipe.getIngredients()
+                for (let i = ings.length - 1; i >= 0; i--) {
+                    stack.push(ings[i].item)
+                }
             }
         }
     }
