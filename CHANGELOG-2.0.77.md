@@ -2,6 +2,24 @@
 
 This branch refreshes the Space Age dataset from 2.0.55 → **2.0.77** and adds a project-hygiene baseline (package.json, ESLint, Vitest, GitHub Actions CI).
 
+## 2026-06-23 — Native BigInt (drop peterolson/big-integer)
+
+Replaces the vendored [peterolson/big-integer](https://github.com/peterolson/BigInteger.js) library (~7 KB minified) with platform-native `BigInt`. `BigInt` has been baseline available across all evergreen browsers since 2020.
+
+**Changes:**
+
+1. `rational.js` — rewritten on top of native BigInt primitives. Internal helpers added: `babs` (abs), `bgcd` (iterative Euclidean), `bdivmod` (truncated euclidean). Operator translation: `.plus`/`.times`/`.minus`/`.divide` → `+`/`*`/`-`/`/`; `.lesser`/`.equals` → `<`/`===`; `.shiftLeft(n)` → `<< BigInt(n)`; `.pow(n)` → `** BigInt(n)`; `.toJSNumber()` → `Number()`; `bigInt.zero|one|minusOne` → `0n|1n|-1n`; `bigInt(s)` → `BigInt(s)`. Edge case: `BigInt(float)` rejects non-integer doubles, so `from_float` uses `Math.trunc(floatPart)` even though the loop already drives `floatPart` to an integer value.
+2. `calc.html` — removed `<script src="third_party/BigInteger.min.js"></script>`.
+3. `third_party/BigInteger.min.js` — deleted (7 KB).
+4. `eslint.config.js` — dropped the `bigInt` global.
+5. `tests/rational.test.js` — new file with 51 unit tests covering normalization, arithmetic, comparisons, `divmod`/`floor`/`ceil`, `from_float` IEEE-754 round-trip exactness, `from_float_approximate` 1/3 detection, `from_string` (integer / decimal / fraction / mixed forms), and `toString`/`toDecimal`/`toUpDecimal`/`toMixed`.
+
+**Behavioral parity:** The new module is a strict drop-in. One historical quirk preserved verbatim: `from_float_approximate(2/3)` does not snap to the canonical `2/3` rational because the sentinel `_two_thirds = 33333/50000` doesn't match `Math.round((2/3) * 100000) = 66667`. This was also true in Kirk's original — not a regression. (`1/3` and `n + 1/3` still snap correctly.)
+
+**Headless-browser verification:** smoke test passes with zero console errors; rational primitives verified end-to-end (`1/2 + 1/3 = 5/6`, `1e15 * 1e15 = 10^30` exact via arbitrary-precision BigInt).
+
+Test count: 42 → 93 passing.
+
 ## 2026-06-23 — Character as first-class producer
 
 Adds the player **character** as a regular `crafting_machine` so hand-crafted recipes have an explicit producer in the calculator UI (previously they had no associated building, no rate, no power figure).

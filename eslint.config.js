@@ -12,7 +12,6 @@ export default [
             globals: {
                 ...globals.browser,
                 d3: "readonly",
-                bigInt: "readonly",
             },
         },
         rules: {

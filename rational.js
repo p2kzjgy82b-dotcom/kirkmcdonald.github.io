@@ -13,25 +13,51 @@ See the License for the specific language governing permissions and
 limitations under the License.*/
 "use strict"
 
+// Native BigInt helpers. Replaces the peterolson/big-integer library
+// (Kirk's original `bigInt` global) with the platform built-in. All
+// arithmetic in this module operates on BigInt primitives directly.
+
+function babs(x) {
+    return x < 0n ? -x : x
+}
+
+function bgcd(a, b) {
+    a = babs(a)
+    b = babs(b)
+    while (b !== 0n) {
+        const t = b
+        b = a % b
+        a = t
+    }
+    return a
+}
+
+// Truncated euclidean divmod, matching peterolson/big-integer's
+// `divmod` semantics: quotient truncates toward zero, remainder shares
+// the sign of the dividend.
+function bdivmod(a, b) {
+    return { quotient: a / b, remainder: a % b }
+}
+
 export class Rational {
     constructor(p, q) {
-        if (q.lesser(bigInt.zero)) {
-            p = bigInt.zero.minus(p)
-            q = bigInt.zero.minus(q)
+        if (q < 0n) {
+            p = -p
+            q = -q
         }
-        var gcd = bigInt.gcd(p.abs(), q)
-        if (gcd.greater(bigInt.one)) {
-            p = p.divide(gcd)
-            q = q.divide(gcd)
+        const gcd = bgcd(p, q)
+        if (gcd > 1n) {
+            p = p / gcd
+            q = q / gcd
         }
         this.p = p
         this.q = q
     }
     toFloat() {
-        return this.p.toJSNumber() / this.q.toJSNumber()
+        return Number(this.p) / Number(this.q)
     }
     toString() {
-        if (this.q.equals(bigInt.one)) {
+        if (this.q === 1n) {
             return this.p.toString()
         }
         return this.p.toString() + "/" + this.q.toString()
@@ -41,7 +67,7 @@ export class Rational {
             maxDigits = 3
         }
         if (roundingFactor == null) {
-            roundingFactor = new Rational(bigInt(5), bigInt(10).pow(maxDigits+1))
+            roundingFactor = new Rational(5n, 10n ** BigInt(maxDigits + 1))
         }
 
         var sign = ""
@@ -51,15 +77,15 @@ export class Rational {
             x = zero.sub(x)
         }
         x = x.add(roundingFactor)
-        var divmod = x.p.divmod(x.q)
+        var divmod = bdivmod(x.p, x.q)
         var integerPart = divmod.quotient.toString()
         var decimalPart = ""
         var fraction = new Rational(divmod.remainder, x.q)
-        var ten = new Rational(bigInt(10), bigInt.one)
+        var ten = new Rational(10n, 1n)
         while (maxDigits > 0 && !fraction.equal(roundingFactor)) {
             fraction = fraction.mul(ten)
             roundingFactor = roundingFactor.mul(ten)
-            divmod = fraction.p.divmod(fraction.q)
+            divmod = bdivmod(fraction.p, fraction.q)
             decimalPart += divmod.quotient.toString()
             fraction = new Rational(divmod.remainder, fraction.q)
             maxDigits--
@@ -75,51 +101,51 @@ export class Rational {
         return sign + integerPart
     }
     toUpDecimal(maxDigits) {
-        var fraction = new Rational(bigInt.one, bigInt(10).pow(maxDigits))
+        var fraction = new Rational(1n, 10n ** BigInt(maxDigits))
         var divmod = this.divmod(fraction)
         var x = this
-        if (!divmod.remainder.isZero()) {
+        if (divmod.remainder.p !== 0n) {
             x = x.add(fraction)
         }
         return x.toDecimal(maxDigits, zero)
     }
     toMixed() {
-        var divmod = this.p.divmod(this.q)
-        if (divmod.quotient.isZero() || divmod.remainder.isZero()) {
+        var divmod = bdivmod(this.p, this.q)
+        if (divmod.quotient === 0n || divmod.remainder === 0n) {
             return this.toString()
         }
         return divmod.quotient.toString() + " + " + divmod.remainder.toString() + "/" + this.q.toString()
     }
     isZero() {
-        return this.p.isZero()
+        return this.p === 0n
     }
     isOne() {
-        return this.p.equals(1) && this.q.equals(1)
+        return this.p === 1n && this.q === 1n
     }
     isInteger() {
-        return this.q.equals(bigInt.one)
+        return this.q === 1n
     }
     ceil() {
-        var divmod = this.p.divmod(this.q)
-        var result = new Rational(divmod.quotient, bigInt.one)
-        if (!divmod.remainder.isZero()) {
+        var divmod = bdivmod(this.p, this.q)
+        var result = new Rational(divmod.quotient, 1n)
+        if (divmod.remainder !== 0n) {
             result = result.add(one)
         }
         return result
     }
     floor() {
-        var divmod = this.p.divmod(this.q)
-        var result = new Rational(divmod.quotient, bigInt.one)
-        if (result.less(zero) && !divmod.remainder.isZero()) {
+        var divmod = bdivmod(this.p, this.q)
+        var result = new Rational(divmod.quotient, 1n)
+        if (result.less(zero) && divmod.remainder !== 0n) {
             result = result.sub(one)
         }
         return result
     }
     equal(other) {
-        return this.p.equals(other.p) && this.q.equals(other.q)
+        return this.p === other.p && this.q === other.q
     }
     less(other) {
-        return this.p.times(other.q).lesser(this.q.times(other.p))
+        return this.p * other.q < this.q * other.p
     }
     abs() {
         if (this.less(zero)) {
@@ -129,15 +155,15 @@ export class Rational {
     }
     add(other) {
         return new Rational(
-            this.p.times(other.q).plus(this.q.times(other.p)),
-            this.q.times(other.q)
+            this.p * other.q + this.q * other.p,
+            this.q * other.q
         )
     }
     sub(other) {
         if (other.isZero()) return this
         return new Rational(
-            this.p.times(other.q).subtract(this.q.times(other.p)),
-            this.q.times(other.q)
+            this.p * other.q - this.q * other.p,
+            this.q * other.q
         )
     }
     mul(other) {
@@ -146,14 +172,14 @@ export class Rational {
         if (this.isOne()) return other
         if (other.isOne()) return this
         return new Rational(
-            this.p.times(other.p),
-            this.q.times(other.q)
+            this.p * other.p,
+            this.q * other.q
         )
     }
     div(other) {
         return new Rational(
-            this.p.times(other.q),
-            this.q.times(other.p)
+            this.p * other.q,
+            this.q * other.p
         )
     }
     divmod(other) {
@@ -165,19 +191,20 @@ export class Rational {
     reciprocate() {
         return new Rational(this.q, this.p)
     }
-    // exp must be a JS float with an integer in it.
+    // exp must be a JS number with an integer in it.
     pow(exp) {
-        return new Rational(this.p.pow(exp), this.q.pow(exp))
+        const e = BigInt(exp)
+        return new Rational(this.p ** e, this.q ** e)
     }
 
     static from_decimal(s) {
         let i = s.indexOf(".")
         if (i === -1 || i === s.length - 1) {
-            return new Rational(bigInt(s), bigInt.one)
+            return new Rational(BigInt(s), 1n)
         }
-        let integerPart = new Rational(bigInt(s.slice(0, i)), bigInt.one)
-        let numerator = bigInt(s.slice(i + 1))
-        let denominator = bigInt(10).pow(s.length - i - 1)
+        let integerPart = new Rational(BigInt(s.slice(0, i)), 1n)
+        let numerator = BigInt(s.slice(i + 1))
+        let denominator = 10n ** BigInt(s.length - i - 1)
         return integerPart.add(new Rational(numerator, denominator))
     }
 
@@ -187,12 +214,13 @@ export class Rational {
             return Rational.from_decimal(s)
         }
         var j = s.indexOf("+")
-        var q = bigInt(s.slice(i + 1))
+        var q = BigInt(s.slice(i + 1))
+        var p
         if (j !== -1) {
-            var integer = bigInt(s.slice(0, j))
-            var p = bigInt(s.slice(j + 1, i)).plus(integer.times(q))
+            var integer = BigInt(s.slice(0, j))
+            p = BigInt(s.slice(j + 1, i)) + integer * q
         } else {
-            var p = bigInt(s.slice(0, i))
+            p = BigInt(s.slice(0, i))
         }
         return new Rational(p, q)
     }
@@ -215,13 +243,19 @@ export class Rational {
             floatPart *= 2
             exp--
         }
-        let numerator = bigInt(floatPart)
-        let denominator = bigInt.one
+        // floatPart is now an integer-valued double; BigInt() refuses
+        // doubles that aren't exact integers, so Math.trunc satisfies
+        // the strict type check without changing the value.
+        let numerator = BigInt(Math.trunc(floatPart))
+        let denominator = 1n
         if (exp > 0) {
-            numerator = numerator.shiftLeft(exp)
+            numerator = numerator << BigInt(exp)
         } else {
-            denominator = denominator.shiftLeft(-exp)
+            denominator = denominator << BigInt(-exp)
         }
+        // Note: original Kirk code preserves sign behavior of bigInt's
+        // implicit float->integer conversion (which sees a positive
+        // value here because of the abs() above). Preserved verbatim.
         return new Rational(numerator, denominator)
     }
 
@@ -232,7 +266,7 @@ export class Rational {
             return Rational.from_floats(x, 1)
         }
         // Sufficient precision for our data?
-        var r = new Rational(bigInt(Math.round(x * 100000)), bigInt(100000))
+        var r = new Rational(BigInt(Math.round(x * 100000)), 100000n)
         // Recognize 1/3 and 2/3 explicitly.
         var divmod = r.divmod(one)
         if (divmod.remainder.equal(_one_third)) {
@@ -244,19 +278,19 @@ export class Rational {
     }
 
     static from_floats(p, q) {
-        return new Rational(bigInt(p), bigInt(q))
+        return new Rational(BigInt(p), BigInt(q))
     }
 }
 
 // Decimal approximations.
-var _one_third = new Rational(bigInt(33333), bigInt(100000))
-var _two_thirds = new Rational(bigInt(33333), bigInt(50000))
+var _one_third = new Rational(33333n, 100000n)
+var _two_thirds = new Rational(33333n, 50000n)
 
-var minusOne = new Rational(bigInt.minusOne, bigInt.one)
-var zero = new Rational(bigInt.zero, bigInt.one)
-var one = new Rational(bigInt.one, bigInt.one)
-var half = new Rational(bigInt.one, bigInt(2))
-var oneThird = new Rational(bigInt.one, bigInt(3))
-var twoThirds = new Rational(bigInt(2), bigInt(3))
+var minusOne = new Rational(-1n, 1n)
+var zero = new Rational(0n, 1n)
+var one = new Rational(1n, 1n)
+var half = new Rational(1n, 2n)
+var oneThird = new Rational(1n, 3n)
+var twoThirds = new Rational(2n, 3n)
 
 export { minusOne, zero, one, half, oneThird, twoThirds }
