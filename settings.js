@@ -38,9 +38,10 @@ export let MODIFICATIONS = new Map([
     ["1-1-110", new Modification("Vanilla 1.1.110", "vanilla-1.1.110.json", true)],
     ["1-1-110x", new Modification("Vanilla 1.1.110 - Expensive", "vanilla-1.1.110-expensive.json", true)],
     ["space-age-2-0-55", new Modification("Space Age 2.0.55 (WORK IN PROGRESS)", "space-age-2.0.55.json", false)],
+    ["space-age-2-0-77", new Modification("Space Age 2.0.77 (Updated)", "space-age-2.0.77.json", false)],
 ])
 
-let DEFAULT_MODIFICATION = "2-0-10"
+let DEFAULT_MODIFICATION = "space-age-2-0-77"
 
 // Ideally we'd write this as a generalized function, but for now we can hard-
 // code these version upgrades.

@@ -1,0 +1,27 @@
+{
+  "name": "kirkmcdonald-calculator",
+  "version": "2.0.77-1",
+  "private": true,
+  "description": "Kirk McDonald's Factorio production calculator, updated for Space Age 2.0.77.",
+  "type": "module",
+  "scripts": {
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "validate:dataset": "node tools/validate-dataset.js",
+    "serve": "python3 -m http.server 8000",
+    "smoke": "node tools/smoke-test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "eslint": "^9.13.0",
+    "@eslint/js": "^9.13.0",
+    "globals": "^15.11.0",
+    "vitest": "^2.1.4",
+    "playwright": "^1.48.0"
+  },
+  "license": "Apache-2.0"
+}
