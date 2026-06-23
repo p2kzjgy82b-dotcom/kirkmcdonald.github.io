@@ -14,7 +14,13 @@ limitations under the License.*/
 
 import { zero, one } from "./rational.js"
 
-// An MxN matrix of rationals.
+// An MxN matrix of rationals, stored row-major sparse: each row is a
+// Map<col, Rational> holding only nonzero entries. Reads of unset cells
+// return the canonical `zero` Rational, preserving Kirk's original
+// dense-Matrix API exactly. Sparse storage exploits the natural sparsity
+// of recipe-graph simplex tableaus (~5-15 nonzeros per row vs hundreds
+// of columns) and lets pivot inner loops iterate over the union of
+// nonzero columns in the source + target rows instead of every column.
 export class Matrix {
     constructor(rows, cols, mat) {
         this.rows = rows
@@ -22,9 +28,9 @@ export class Matrix {
         if (mat) {
             this.mat = mat
         } else {
-            this.mat = []
-            for (let i = 0; i < rows * cols; i++) {
-                this.mat.push(zero)
+            this.mat = new Array(rows)
+            for (let i = 0; i < rows; i++) {
+                this.mat[i] = new Map()
             }
         }
     }
@@ -52,90 +58,140 @@ export class Matrix {
         return lines.join("\n")
     }
     copy() {
-        let mat = this.mat.slice()
+        let mat = new Array(this.rows)
+        for (let i = 0; i < this.rows; i++) {
+            mat[i] = new Map(this.mat[i])
+        }
         return new Matrix(this.rows, this.cols, mat)
     }
     index(row, col) {
-        return this.mat[row*this.cols + col]
+        const v = this.mat[row].get(col)
+        return v === undefined ? zero : v
     }
     setIndex(row, col, value) {
-        this.mat[row*this.cols + col] = value
+        if (value.isZero()) {
+            this.mat[row].delete(col)
+        } else {
+            this.mat[row].set(col, value)
+        }
     }
     addIndex(row, col, value) {
-        this.setIndex(row, col, this.index(row, col).add(value))
+        if (value.isZero()) return
+        const cur = this.mat[row].get(col)
+        if (cur === undefined) {
+            this.mat[row].set(col, value)
+        } else {
+            const next = cur.add(value)
+            if (next.isZero()) {
+                this.mat[row].delete(col)
+            } else {
+                this.mat[row].set(col, next)
+            }
+        }
     }
     // Multiplies all positive elements of a column by the value, in-place.
     // (For prod modules.)
     mulPosColumn(col, value) {
         for (let i = 0; i < this.rows; i++) {
-            let x = this.index(i, col)
-            if (x.less(zero) || x.equal(zero)) {
+            const x = this.mat[i].get(col)
+            if (x === undefined || x.less(zero) || x.isZero()) {
                 continue
             }
-            this.setIndex(i, col, x.mul(value))
+            const next = x.mul(value)
+            if (next.isZero()) {
+                this.mat[i].delete(col)
+            } else {
+                this.mat[i].set(col, next)
+            }
         }
     }
     mulRow(row, value) {
-        for (let i = 0; i < this.cols; i++) {
-            let x = this.index(row, i)
-            this.setIndex(row, i, x.mul(value))
+        if (value.isZero()) {
+            this.mat[row].clear()
+            return
+        }
+        if (value.isOne()) {
+            return
+        }
+        const r = this.mat[row]
+        for (const [c, x] of r) {
+            r.set(c, x.mul(value))
         }
     }
     appendColumn(column) {
-        let mat = []
+        const mat = new Array(this.rows)
+        const newCol = this.cols
         for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.cols; j++) {
-                mat.push(this.index(i, j))
+            const m = new Map(this.mat[i])
+            const v = column[i]
+            if (v !== undefined && !v.isZero()) {
+                m.set(newCol, v)
             }
-            mat.push(column[i])
+            mat[i] = m
         }
         return new Matrix(this.rows, this.cols + 1, mat)
     }
     // Returns new matrix with given number of additional columns.
     appendColumns(n) {
-        let mat = []
+        // Nothing to do per cell; new columns are all zero (= absent).
+        const mat = new Array(this.rows)
         for (let i = 0; i < this.rows; i++) {
-            for (let j = 0; j < this.cols; j++) {
-                mat.push(this.index(i, j))
-            }
-            for (let j = 0; j < n; j++) {
-                mat.push(zero)
-            }
+            mat[i] = new Map(this.mat[i])
         }
         return new Matrix(this.rows, this.cols + n, mat)
     }
     setColumn(j, column) {
         for (let i = 0; i < this.rows; i++) {
-            this.setIndex(i, j, column[i])
+            const v = column[i]
+            if (v.isZero()) {
+                this.mat[i].delete(j)
+            } else {
+                this.mat[i].set(j, v)
+            }
         }
     }
     // Sets a column to all zeros.
     zeroColumn(col) {
         for (let i = 0; i < this.rows; i++) {
-            this.setIndex(i, col, zero)
+            this.mat[i].delete(col)
         }
     }
     // Sets a row to all zeros.
     zeroRow(row) {
-        for (let i = 0; i < this.cols; i++) {
-            this.setIndex(row, i, zero)
-        }
+        this.mat[row].clear()
     }
     swapRows(a, b) {
-        for (let i = 0; i < this.cols; i++) {
-            let temp = this.index(a, i)
-            this.setIndex(a, i, this.index(b, i))
-            this.setIndex(b, i, temp)
+        const tmp = this.mat[a]
+        this.mat[a] = this.mat[b]
+        this.mat[b] = tmp
+    }
+    // Iterates over every nonzero value in the matrix. Used by solve.js
+    // to compute the cost-function bounds. With dense storage this was
+    // historically a `for (let x of A.mat)`, which assumed an internal
+    // flat array; the sparse backend exposes the same logical contract
+    // through this method instead.
+    *iterValues() {
+        for (let i = 0; i < this.rows; i++) {
+            for (const v of this.mat[i].values()) {
+                yield v
+            }
         }
+    }
+    // Returns an iterable view of the row's nonzero (col, value) pairs.
+    // Callers MUST NOT mutate the underlying row during iteration.
+    // This lets sparse-aware loops (e.g. simplex.pivot) walk only the
+    // O(nnz_row) nonzeros instead of the full O(cols) dense range.
+    rowEntries(row) {
+        return this.mat[row]
     }
     // Places the matrix into reduced row echelon form, in-place, and returns
     // the column numbers of the pivots.
     rref() {
-        let rows = this.rows
-        let cols = this.cols
+        const rows = this.rows
+        const cols = this.cols
         let piv_row = 0
         let piv_col = 0
-        let pivots = []
+        const pivots = []
         while (piv_col < cols && piv_row < rows) {
             let pivot_val
             let pivot_offset = 0
@@ -153,27 +209,66 @@ export class Matrix {
             if (pivot_offset != 0) {
                 this.swapRows(piv_row, piv_row + pivot_offset)
             }
+            const pivRow = this.mat[piv_row]
             for (let row = 0; row < rows; row++) {
                 if (row == piv_row) {
                     continue
                 }
-                let val = this.index(row, piv_col)
-                if (val.isZero()) {
+                const targetRow = this.mat[row]
+                const val = targetRow.get(piv_col)
+                if (val === undefined) {
                     continue
                 }
-                for (let i = 0; i < cols; i++) {
-                    let newVal = pivot_val.mul(this.index(row, i)).sub(val.mul(this.index(piv_row, i)))
-                    this.setIndex(row, i, newVal)
+                // newVal(c) = pivot_val * target(r,c) - val * piv(r,c)
+                //
+                // Two phases, no intermediate Set:
+                //   1. For each c in pivRow: update or insert into
+                //      targetRow. After this phase, targetRow's entries
+                //      for cols in pivRow are correct (and only those).
+                //   2. For each c in targetRow that was NOT in pivRow,
+                //      multiply by pivot_val (the val*pv term is zero).
+                //
+                // To make phase 2 detect "not in pivRow" cheaply without a
+                // second lookup, phase 1 uses a per-entry sentinel: it
+                // tags processed columns by writing them directly, so
+                // phase 2 just iterates targetRow and skips anything
+                // already in pivRow. We use a small temp Map of cols
+                // processed-this-iteration to identify which targetRow
+                // entries phase 2 should still touch.
+                const processed = new Set()
+                for (const [c, pv] of pivRow) {
+                    processed.add(c)
+                    const tv = targetRow.get(c)
+                    let newVal
+                    if (tv === undefined) {
+                        newVal = zero.sub(val.mul(pv))
+                    } else {
+                        newVal = pivot_val.mul(tv).sub(val.mul(pv))
+                    }
+                    if (newVal.isZero()) {
+                        targetRow.delete(c)
+                    } else {
+                        targetRow.set(c, newVal)
+                    }
+                }
+                // Phase 2: targetRow entries not in pivRow scale by pivot_val.
+                for (const [c, tv] of targetRow) {
+                    if (processed.has(c)) continue
+                    targetRow.set(c, pivot_val.mul(tv))
                 }
             }
             piv_row += 1
         }
         for (let i = 0; i < pivots.length; i++) {
-            let j = pivots[i]
-            let pivot_val = this.index(i, j)
-            this.setIndex(i, j, one)
-            for (let col = j+1; col < cols; col++) {
-                this.setIndex(i, col, this.index(i, col).div(pivot_val))
+            const j = pivots[i]
+            const pivRow = this.mat[i]
+            const pivot_val = pivRow.get(j)  // guaranteed nonzero
+            pivRow.set(j, one)
+            // Divide every other nonzero entry in this row by pivot_val.
+            for (const [c, v] of pivRow) {
+                if (c > j) {
+                    pivRow.set(c, v.div(pivot_val))
+                }
             }
         }
         return pivots

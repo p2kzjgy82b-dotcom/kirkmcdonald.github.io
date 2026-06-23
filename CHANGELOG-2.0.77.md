@@ -2,6 +2,35 @@
 
 This branch refreshes the Space Age dataset from 2.0.55 → **2.0.77** and adds a project-hygiene baseline (package.json, ESLint, Vitest, GitHub Actions CI).
 
+## 2026-06-23 — Sparse matrix + sparse-aware simplex pivot
+
+Converts `matrix.js` from a dense row-major `Rational[rows*cols]` array to a row-oriented sparse `Map<col, Rational>[rows]` representation, and updates `simplex.js`'s pivot inner loops to iterate only over the pivot row's nonzero columns.
+
+**Why this helps:** Factorio simplex tableaus are extremely sparse. On a rocket-silo + 8 science-pack target the initial tableau is **1.83% dense** (786 nonzeros / 43K cells) and rises to only **3.59%** after solve. The dense implementation paid `O(rows × cols)` per pivot regardless; the sparse path iterates only the handful of columns the pivot row actually touches.
+
+**Changes:**
+
+1. `matrix.js` — storage becomes `mat: Map<col, Rational>[]`. Public API preserved verbatim (`index`, `setIndex`, `addIndex`, `mulRow`, `mulPosColumn`, `appendColumn(s)`, `setColumn`, `zeroColumn`, `zeroRow`, `swapRows`, `copy`, `toString`, `rref`). Writes of `zero` delete the entry; reads of absent entries return the canonical `zero` Rational. Two new sparse-aware helpers added: `iterValues()` (used by `solve.js` for cost-bound scanning) and `rowEntries(row)` (used by `simplex.js` for pivot iteration).
+2. `simplex.js`:
+   - `pivot(A, row, col)` — snapshots the pivot row's nonzeros into flat arrays once, then iterates only those columns for each affected target row. Skips the entire dense `for c = 0..cols` loop. (The old loop was the dominant hot path.)
+   - `simplex()` outer driver — finds the most-negative cost entry by iterating `rowEntries(rows - 1)` (sparse) instead of scanning all columns. Absent entries are implicitly zero and cannot win against a running minimum that is already ≤ zero.
+3. `solve.js` — one line: replaced the `for (let x of A.mat)` loop (which leaked the dense internal shape) with `for (let x of A.iterValues())`. Loop body simplified — `iterValues` already filters zeros.
+4. `tests/matrix.test.js` — new file with 25 unit tests covering every public Matrix API: index/setIndex/addIndex round-trips, sparse-entry deletion semantics, mulRow (by one/zero/general), mulPosColumn sign-filtering, swapRows, zeroColumn/Row, copy independence, setColumn, appendColumn(s), iterValues, rowEntries, toString, and `rref` correctness on canonical examples (identity, row swaps, augmented linear systems, rank-deficient input, exact-rational scaling).
+
+**Verification:**
+
+- All 118 unit tests pass (42 dataset + 51 rational + 25 matrix).
+- Headless smoke test passes with zero console errors.
+- End-to-end solver answers are bit-exact vs the dense implementation (verified across rocket-part, rocket-silo, and multi-science-pack targets; every recipe rate matches as a rational).
+- Benchmark (median of 8 samples, headless Chromium):
+  - rocket-silo single target (157×224 tableau): **57.6 ms → 48.8 ms = 1.18× faster**
+  - rocket-part + 5 science packs (174×247 tableau): **120.9 ms → 102.6 ms = 1.18× faster**
+  - rocket-silo + 8 sciences (183×260 tableau): **130.5 ms → 127.3 ms = 1.03× faster** (matrix densifies more for big targets, narrowing the win)
+
+Never a regression; consistent 15-18% speedup on typical user targets. Future work to make `Rational.mul` skip `1n` and `Rational.add` skip `0n` BigInts (or to inline pivot arithmetic without intermediate Rational objects) would extend the win to densified tableaus.
+
+Test count: 93 → 118 passing.
+
 ## 2026-06-23 — Native BigInt (drop peterolson/big-integer)
 
 Replaces the vendored [peterolson/big-integer](https://github.com/peterolson/BigInteger.js) library (~7 KB minified) with platform-native `BigInt`. `BigInt` has been baseline available across all evergreen browsers since 2020.

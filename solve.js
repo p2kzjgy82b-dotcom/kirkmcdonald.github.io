@@ -281,10 +281,10 @@ export function solve(spec, fullOutputs) {
     // Set cost function
     let min = null
     let max = zero
-    for (let x of A.mat) {
-        if (x.isZero()) {
-            continue
-        }
+    // Matrix.iterValues yields only nonzero entries (the sparse backend
+    // skips zeros automatically; this also matches the old
+    // `for (let x of A.mat)` loop's intent of finding the cost bounds).
+    for (let x of A.iterValues()) {
         x = x.abs()
         if (min === null || x.less(min)) {
             min = x

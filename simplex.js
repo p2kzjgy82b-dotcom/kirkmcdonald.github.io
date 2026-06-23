@@ -17,18 +17,37 @@ import { zero, one } from "./rational.js"
 function pivot(A, row, col) {
     let x = A.index(row, col)
     A.mulRow(row, x.reciprocate())
+    // Snapshot the pivot row's nonzeros into a flat array so we can
+    // iterate without paying per-entry Map overhead and without holding
+    // a live view (the pivot row itself is unchanged by the loop below,
+    // but defensive copying is cheap relative to BigInt arithmetic).
+    const pivRow = A.rowEntries(row)
+    const pivCols = new Array(pivRow.size)
+    const pivVals = new Array(pivRow.size)
+    {
+        let k = 0
+        for (const [c, v] of pivRow) {
+            pivCols[k] = c
+            pivVals[k] = v
+            k++
+        }
+    }
+    const ncols = pivCols.length
     for (let r = 0; r < A.rows; r++) {
         if (r === row) {
             continue
         }
-        let ratio = A.index(r, col)
+        const ratio = A.index(r, col)
         if (ratio.isZero()) {
             continue
         }
-
-        for (let c = 0; c < A.cols; c++) {
-            x = A.index(r, c).sub(A.index(row, c).mul(ratio))
-            A.setIndex(r, c, x)
+        // newVal(r, c) = A(r, c) - A(row, c) * ratio
+        // A(row, c) is zero outside pivCols, so the update is a no-op
+        // there. Iterate the (handful of) pivot-row nonzeros only.
+        for (let k = 0; k < ncols; k++) {
+            const c = pivCols[k]
+            const newVal = A.index(r, c).sub(pivVals[k].mul(ratio))
+            A.setIndex(r, c, newVal)
         }
     }
 }
@@ -138,11 +157,18 @@ function eliminateNegativeBases(A) {
 
 export function simplex(A) {
     while (true) {
-        let min = null
+        // Find the most-negative entry in the cost row (last row). With
+        // sparse storage we iterate only the row's nonzeros; columns
+        // that are absent are implicitly zero, which can't beat a
+        // running minimum that is already ≤ zero. If no nonzero entry
+        // is negative, the running min stays at `zero` and we exit.
+        let min = zero
         let minCol = null
-        for (let col = 0; col < A.cols - 1; col++) {
-            let x = A.index(A.rows - 1, col)
-            if (min === null || x.less(min)) {
+        const costRow = A.rowEntries(A.rows - 1)
+        const lastCol = A.cols - 1
+        for (const [col, x] of costRow) {
+            if (col === lastCol) continue
+            if (x.less(min)) {
                 min = x
                 minCol = col
             }
