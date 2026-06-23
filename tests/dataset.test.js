@@ -127,6 +127,59 @@ describe("authoritative resource categories", () => {
     })
 })
 
+describe("character (player) as first-class producer", () => {
+    // The player character is a regular crafting_machine. Categories and speed
+    // are sourced from Wube's CharacterPrototype as patched by Space Age:
+    //   crafting_categories = {"crafting", "electronics", "pressing",
+    //     "recycling-or-hand-crafting", "organic-or-hand-crafting",
+    //     "organic-or-assembling"}
+    //   crafting_speed = 1.0
+    const character = () => data.crafting_machines.find((m) => m.key === "character")
+
+    it("character is in crafting_machines", () => {
+        expect(character()).toBeDefined()
+    })
+
+    it("character declares exactly the 6 Wube-defined categories", () => {
+        const expected = [
+            "crafting",
+            "electronics",
+            "organic-or-assembling",
+            "organic-or-hand-crafting",
+            "pressing",
+            "recycling-or-hand-crafting",
+        ]
+        expect([...character().crafting_categories].sort()).toEqual(expected)
+    })
+
+    it("character has no fuel, no power, no module slots", () => {
+        const c = character()
+        expect(c.crafting_speed).toBe(1)
+        expect(c.energy_usage).toBe(0)
+        expect(c.module_slots).toBe(0)
+        expect(c.energy_source.type).toBe("void")
+    })
+
+    it("every character category is claimed by at least one recipe", () => {
+        // No point listing a category nothing produces in it.
+        const recipeCats = new Set(data.recipes.map((r) => r.category))
+        const orphans = character().crafting_categories.filter((c) => !recipeCats.has(c))
+        expect(orphans).toEqual([])
+    })
+
+    it("recycling-or-hand-crafting still has recycler as a producer (not just character)", () => {
+        // Sanity check that adding character to this category didn't displace
+        // the recycler. The factory.js DEFAULT_BUILDINGS list must include
+        // "recycler" so it stays the default.
+        const producers = data.crafting_machines
+            .filter((m) => m.crafting_categories.includes("recycling-or-hand-crafting"))
+            .map((m) => m.key)
+            .sort()
+        expect(producers).toContain("recycler")
+        expect(producers).toContain("character")
+    })
+})
+
 describe("pumpjack as first-class building", () => {
     // Previously pumpjack was excluded from the building registry and fluid
     // resources went through a hardcoded PumpjackRecipe with category=null.

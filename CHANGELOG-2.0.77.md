@@ -2,6 +2,28 @@
 
 This branch refreshes the Space Age dataset from 2.0.55 → **2.0.77** and adds a project-hygiene baseline (package.json, ESLint, Vitest, GitHub Actions CI).
 
+## 2026-06-23 — Character as first-class producer
+
+Adds the player **character** as a regular `crafting_machine` so hand-crafted recipes have an explicit producer in the calculator UI (previously they had no associated building, no rate, no power figure).
+
+**Character properties** (from Wube's `space-age/base-data-updates.lua`):
+
+- `crafting_speed = 1.0`
+- `crafting_categories = {crafting, electronics, pressing, recycling-or-hand-crafting, organic-or-hand-crafting, organic-or-assembling}` (6 categories — turn-1's FactorioLab snapshot only had 3; Wube's space-age data-updates is authoritative)
+- `energy_source = {type: "void"}`, `energy_usage = 0`
+- `module_slots = 0`, `prod_bonus = 0`, `allowed_effects = []`
+- Icon sourced from [Factorio Wiki — Player.png](https://wiki.factorio.com/images/Player.png) (64×64, rescaled to 32 px sprite cell)
+
+**Changes:**
+
+1. `adapter_work/build_kirk_dataset.py` — sprite sheet extended by one 32 px row (991×959 → 991×991); character icon embedded at cell `(0, 29)`; character entry appended to `crafting_machines[]`. New sprite hash `cb6bfb57cb98800fddf4267e728e5a2c`.
+2. `factory.js` — added `"recycler"` and `"biochamber"` to `DEFAULT_BUILDINGS`. Without this, `BuildingGroup.getDefault()` would have fallen back to highest-speed (character, 1.0) for `recycling-or-hand-crafting` and `organic-or-*`, overriding the correct UX default (recycler 0.5, biochamber 2.0).
+3. `tests/dataset.test.js` — 5 new invariants covering character presence, 6-category coverage, void energy source, sprite-cell mapping, and DEFAULT_BUILDINGS preservation.
+
+**Headless-browser verification:** all 6 character categories register a producer, defaults preserved (asm-1 for crafting/electronics/pressing, biochamber for organic-*, recycler for recycling-or-hand-crafting), rate math correct — `iron-gear-wheel` defaults to 1.0/sec on asm-1 and computes 2.0/sec when character is selected (speed 1.0 × time 0.5 = 2/sec).
+
+Test count: 37 → 42 passing.
+
 ## 2026-06-23 — Pumpjack cleanup
 
 Resolves the long-standing `// XXX: Do something about pumpjacks` and `// XXX: Still a hack.` notes in `recipe.js`.

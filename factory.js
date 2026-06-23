@@ -34,6 +34,13 @@ let DEFAULT_BUILDINGS = new Set([
     "assembling-machine-1",
     "electric-furnace",
     "electric-mining-drill",
+    // recycler is the canonical machine for the recycling-or-hand-crafting
+    // group. Without this, adding 'character' (crafting speed 1.0) to that
+    // group would make it the default over the recycler (speed 0.5).
+    "recycler",
+    // biochamber is the canonical machine for the organic-or-hand-crafting /
+    // organic-or-assembling groups (which now also include 'character').
+    "biochamber",
 ])
 
 class BuildingSet {
