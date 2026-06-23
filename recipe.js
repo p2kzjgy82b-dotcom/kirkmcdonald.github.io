@@ -331,30 +331,6 @@ class MiningRecipe extends Recipe {
     }
 }
 
-// XXX: Still a hack.
-class PumpjackRecipe extends Recipe {
-    constructor(key, name, col, row, category, product) {
-        super(
-            key,
-            name,
-            undefined,
-            col,
-            row,
-            false,
-            category,
-            zero,
-            [],
-            [new Ingredient(product, one)],
-            [],
-        )
-        this.defaultPriority = 1
-        this.defaultWeight = Rational.from_float(100)
-    }
-    isResource() {
-        return true
-    }
-}
-
 class OffshorePumpRecipe extends Recipe {
     //constructor(key, name, order, col, row, allow_prod, category, time, ingredients, products) {
     constructor(key, name, order, col, row, product) {
@@ -475,19 +451,10 @@ export function getRecipes(data, items) {
             console.warn(`Resource ${d.key} has no category in the dataset — falling back to 'basic-solid'. The data adapter should be fixed.`)
             category = "basic-solid"
         }
-        if (category === "basic-fluid") {
-            // XXX: Do something about pumpjacks.
-            let item = items.get(d.results[0].name)
-            recipes.set(d.key, new PumpjackRecipe(
-                d.key,
-                d.localized_name.en,
-                d.icon_col,
-                d.icon_row,
-                null,
-                item,
-            ))
-            continue
-        }
+        // Fluid resources (basic-fluid) flow through the same MiningRecipe path
+        // as solid resources. Their category dispatches to the pumpjack via the
+        // standard BuildingGroup lookup. The adapter normalizes fluid result
+        // entries to use `amount` so the shape matches solids here.
         let ingredients = null
         if ("required_fluid" in d) {
             ingredients = [new Ingredient(

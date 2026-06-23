@@ -2,6 +2,26 @@
 
 This branch refreshes the Space Age dataset from 2.0.55 → **2.0.77** and adds a project-hygiene baseline (package.json, ESLint, Vitest, GitHub Actions CI).
 
+## 2026-06-23 — Pumpjack cleanup
+
+Resolves the long-standing `// XXX: Do something about pumpjacks` and `// XXX: Still a hack.` notes in `recipe.js`.
+
+**Before:** `building.js` explicitly skipped the pumpjack when iterating `data.mining_drills`. `recipe.js` had a hardcoded `PumpjackRecipe` class with `category=null` that fluid resources were routed into. With a null category, `FactorySpecification.getBuilding` returned `null`, so fluid resources never had an associated producer — meaning no building count, no power figure, no module slots in the calculator UI.
+
+**After:** Pumpjack is now registered as a regular `Miner` with `categories = {"basic-fluid"}`, and fluid resources (`crude-oil`, `lithium-brine`, `fluorine-vent`, `sulfuric-acid-geyser`) flow through the same `MiningRecipe` code path as solid ones. Dispatch happens via the standard `BuildingGroup` lookup keyed off `recipe.category`.
+
+Four code changes:
+
+1. `building.js` — removed the `if (d.key == "pumpjack") continue` skip.
+2. `recipe.js` — deleted the `PumpjackRecipe` class and the `if (category === "basic-fluid")` special branch in `getRecipes`.
+3. `tools/build_kirk_dataset.py` (adapter) — fluid resource `results` are normalized from FactorioLab's `{amount_min, amount_max, probability}` to a single `amount` field (mean of min/max) so the shape matches solid resources for `recipe.js`'s mining loop.
+4. `tests/dataset.test.js` — 4 new invariants covering pumpjack registration, unified result shape, sole-producer assertion, and rate sanity check (10 crude-oil/sec at base speed).
+
+Headless-browser verification: zero console/page errors, all four fluid resources dispatch to `pumpjack`, and `ratePerSec` is correctly 1 (× 10 amount = 10 fluid/sec, matching Wube's stated base pumpjack throughput).
+
+Test count: 33 → 37 passing.
+
+
 ## Data changes
 
 | Section            | 2.0.55 | 2.0.77 | Δ        |
@@ -36,7 +56,7 @@ The icon sprite sheet was rescaled from FactorioLab's 66 px cells to Kirk's 32 p
 
 - `package.json` — pinned to Node 20, declares scripts: `lint`, `test`, `validate:dataset`, `smoke`, `serve`.
 - `eslint.config.js` — flat-config ESLint catching `no-undef` and unused vars (warn). Already surfaces 13 genuine `no-undef` bugs in Kirk's code (`Popper`, `Exception`, `minusOne`) — left for a follow-up PR.
-- `tests/dataset.test.js` — 30 Vitest unit tests asserting structural integrity (referential ingredient/result lookups, recipe-category coverage by producers, sprite hash, counts, singleton vs list shapes).
+- `tests/dataset.test.js` — 37 Vitest unit tests asserting structural integrity (referential ingredient/result lookups, recipe-category coverage by producers, sprite hash, counts, singleton vs list shapes, authoritative resource categories, pumpjack as first-class building).
 - `tools/validate-dataset.js` — standalone validator script.
 - `tools/smoke-test.js` — Playwright headless test that serves `calc.html`, loads the dataset, and asserts the page initialises with zero console errors and a populated `window.spec`.
 - `.github/workflows/ci.yml` — runs `validate:dataset` + `lint` (non-blocking) + `test` on push & PR, then a separate job runs `smoke` with Playwright.

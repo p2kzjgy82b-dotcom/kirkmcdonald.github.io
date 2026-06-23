@@ -308,10 +308,13 @@ export function getBuildings(data, items) {
             speed,
         ))
     }
+    // Pumpjack is registered here as a regular Miner. Its resource_categories
+    // (basic-fluid) drive the dispatch the same way as electric-mining-drill /
+    // big-mining-drill. The legacy code excluded it and routed all fluid
+    // resources through a hardcoded PumpjackRecipe shell with category=null,
+    // which left fluid resources without a producer (no building count, no
+    // power). See the matching removal in recipe.js getRecipes.
     for (let d of data.mining_drills) {
-        if (d.key == "pumpjack") {
-            continue
-        }
         let fuel = null
         if (d.energy_source && d.energy_source.type === "burner") {
             fuel = d.energy_source.fuel_category

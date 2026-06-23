@@ -127,6 +127,51 @@ describe("authoritative resource categories", () => {
     })
 })
 
+describe("pumpjack as first-class building", () => {
+    // Previously pumpjack was excluded from the building registry and fluid
+    // resources went through a hardcoded PumpjackRecipe with category=null.
+    // After cleanup, pumpjack is a regular Miner and fluid resources dispatch
+    // through the standard category mechanism.
+    it("pumpjack is present in mining_drills with basic-fluid category", () => {
+        const pumpjack = data.mining_drills.find((d) => d.key === "pumpjack")
+        expect(pumpjack).toBeDefined()
+        expect(pumpjack.resource_categories).toContain("basic-fluid")
+        expect(pumpjack.mining_speed).toBeGreaterThan(0)
+        expect(pumpjack.energy_usage).toBeGreaterThan(0)
+    })
+
+    it("every basic-fluid resource has a unified result shape (amount, not min/max)", () => {
+        const fluids = data.resources.filter((r) => r.category === "basic-fluid")
+        expect(fluids.length).toBeGreaterThan(0)
+        for (const r of fluids) {
+            expect(r.results.length).toBeGreaterThan(0)
+            for (const result of r.results) {
+                expect(result.amount, `${r.key} result missing amount`).toBeTypeOf("number")
+                expect(result).not.toHaveProperty("amount_min")
+                expect(result).not.toHaveProperty("amount_max")
+            }
+        }
+    })
+
+    it("pumpjack is the sole producer for basic-fluid resources", () => {
+        const fluidDrills = data.mining_drills.filter((d) =>
+            (d.resource_categories || []).includes("basic-fluid"),
+        )
+        expect(fluidDrills.map((d) => d.key)).toEqual(["pumpjack"])
+    })
+
+    it("crude-oil mining produces 10 units per cycle at base speed", () => {
+        // Sanity check that pumpjack will tick at 10 crude-oil/sec under default settings:
+        //   rate = mining_speed / mining_time * amount = 1 / 1 * 10 = 10
+        const pumpjack = data.mining_drills.find((d) => d.key === "pumpjack")
+        const crude = data.resources.find((r) => r.key === "crude-oil")
+        expect(crude.mining_time).toBe(1)
+        expect(pumpjack.mining_speed).toBe(1)
+        expect(crude.results[0].name).toBe("crude-oil")
+        expect(crude.results[0].amount).toBe(10)
+    })
+})
+
 describe("singletons & lists", () => {
     it("beacon is a single object with module slots", () => {
         expect(typeof data.beacon).toBe("object")
