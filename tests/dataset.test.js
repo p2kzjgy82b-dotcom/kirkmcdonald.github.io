@@ -100,6 +100,33 @@ describe("sprite sheet integrity", () => {
     })
 })
 
+describe("authoritative resource categories", () => {
+    // Every resource MUST declare its category in the dataset. recipe.js no
+    // longer silently rewrites missing categories to 'basic-solid'.
+    it("every resource has a non-empty category", () => {
+        const missing = data.resources
+            .filter((r) => !r.category)
+            .map((r) => r.key)
+        expect(missing).toEqual([])
+    })
+
+    it("tungsten-ore is hard-solid (only big-mining-drill mines it)", () => {
+        const tungsten = data.resources.find((r) => r.key === "tungsten-ore")
+        expect(tungsten?.category).toBe("hard-solid")
+    })
+
+    it("every resource category is claimed by at least one mining drill", () => {
+        const drillCats = new Set()
+        for (const d of data.mining_drills) {
+            for (const c of d.resource_categories || []) drillCats.add(c)
+        }
+        const orphans = data.resources
+            .map((r) => r.category)
+            .filter((c) => c && !drillCats.has(c))
+        expect([...new Set(orphans)]).toEqual([])
+    })
+})
+
 describe("singletons & lists", () => {
     it("beacon is a single object with module slots", () => {
         expect(typeof data.beacon).toBe("object")

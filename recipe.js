@@ -465,8 +465,14 @@ export function getRecipes(data, items) {
         }
     }
     for (let d of data.resources) {
+        // Resource category must be provided by the dataset (e.g. 'basic-solid',
+        // 'hard-solid', 'basic-fluid'). The adapter derives this from the mining
+        // recipe's producer list intersected with each drill's resource_categories,
+        // so any null here is a real data bug we want to surface — but we keep a
+        // last-ditch default so the calculator still loads.
         let category = d.category
         if (!category) {
+            console.warn(`Resource ${d.key} has no category in the dataset — falling back to 'basic-solid'. The data adapter should be fixed.`)
             category = "basic-solid"
         }
         if (category === "basic-fluid") {
