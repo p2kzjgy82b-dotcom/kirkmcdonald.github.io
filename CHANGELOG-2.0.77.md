@@ -2,6 +2,34 @@
 
 This branch refreshes the Space Age dataset from 2.0.55 → **2.0.77** and adds a project-hygiene baseline (package.json, ESLint, Vitest, GitHub Actions CI).
 
+## 2026-06-23 — Closed: "Web Worker the simplex solver" (not needed)
+
+The roadmap listed moving the simplex LP solver onto a Web Worker so the main thread would stay responsive during big solves. After actually measuring on Kirk's live calculator (kirkmcdonald.github.io, vanilla 2.0.55 dataset, 200 items / 204 recipes, headless Chrome in a cloud sandbox — a slower environment than typical user hardware), the data says this is unnecessary engineering.
+
+**Measured `solve()` latency (median over 7 runs each):**
+
+| Target | Recipes in solution | `solve()` only | Full pipeline (solve + DOM) |
+| --- | --- | --- | --- |
+| advanced-circuit | 15 | 0.7 ms | 25 ms |
+| processing-unit | 18 | 0.7 ms | 39 ms |
+| low-density-structure | 14 | 1.4 ms | 25 ms |
+| utility-science-pack | 28 | 1.6 ms | 50 ms |
+| rocket-part | 23 | 2.0 ms | 71 ms |
+| space-science-pack | 30 | 2.9 ms | 69 ms |
+| 4-pack combo | 38 | 3.0 ms | 74 ms |
+| 5-pack megabase | 40 | 3.2 ms | 64 ms |
+| **6-pack megabase++ (incl. space-science)** | **48** | **4.4 ms** | **86 ms** |
+
+**Conclusions:**
+
+- Worst-case `solve()` measured is **~4 ms** — well under a 60 Hz frame (16.7 ms). You could solve 200× per second without dropping a frame.
+- The 25–86 ms "full pipeline" cost is **dominated by the DOM update**, not the LP solve. `display.js` / `graph.js` walk through dozens of recipes and update hundreds of nodes via D3; that's where the time goes.
+- A Web Worker **cannot help with DOM updates** (Workers have no DOM access). It would save ~3 ms of frozen-thread time on the heaviest builds — imperceptible.
+- Worker setup + `postMessage` structured-clone overhead is ~5–20 ms per solve. For light builds (~1 ms solve), the Worker would make solves **measurably slower**.
+- The native-BigInt migration (item #4, commit `8ad6eec`) was probably the most impactful single perf change vs. the live site, which still ships `BigInteger.min.js` (a pure-JS bignum library, 3–10× slower than native `BigInt`).
+
+**Decision: closed as not needed.** If a future UI-responsiveness issue ever materializes, the real lever is the DOM-update path (coalesce/debounce rapid edits, diff smarter in `display.js`), not the LP solver. Measurement script preserved at `tools/rate-parity.js` (which doubles as a perf harness via its `lastTotals` capture).
+
 ## 2026-06-23 — Iterative DFS (remove stack-overflow risk on deep recipe graphs)
 
 Replaces the three deepest recursive DFS traversals in the codebase with explicit-stack iterative versions. Measured worst-case recursion depth on the Space Age 2.0.77 recipe graph:
