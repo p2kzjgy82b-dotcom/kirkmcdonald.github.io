@@ -231,7 +231,7 @@ function makeRecipe(data, items, d) {
             conditions.push(new SurfaceCondition(property, min, max))
         }
     }
-    let recipe = new Recipe(
+    return new Recipe(
         d.key,
         d.localized_name.en,
         d.order,
@@ -244,10 +244,6 @@ function makeRecipe(data, items, d) {
         products,
         conditions,
     )
-    if (Array.isArray(d.production_planets) && d.production_planets.length > 0) {
-        recipe.productionPlanets = new Set(d.production_planets)
-    }
-    return recipe
 }
 
 class ResourceRecipe extends Recipe {

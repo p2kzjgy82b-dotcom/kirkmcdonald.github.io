@@ -2,34 +2,6 @@
 
 This branch refreshes the Space Age dataset from 2.0.55 → **2.0.77** and adds a project-hygiene baseline (package.json, ESLint, Vitest, GitHub Actions CI).
 
-## 2026-06-23 — Planet-gating for tech-locked recipes
-
-On a fresh load (Nauvis selected by default), the calculator was happily picking **`coal-synthesis`** (carbon + sulfur + water → coal) as the default coal source instead of mining. The same bug surfaced biter-egg recipes (e.g. `productivity-module-3`, `biolab`, `captive-biter-spawner`) when those buildings should not yet exist for a Nauvis-only player.
-
-**Root cause:** these recipes have no `surface_conditions` in the upstream dataset — Factorio gates them via tech research, not surface properties — so `Planet.allows()` couldn't tell that they shouldn't appear on Nauvis. The extractor that produced this dataset doesn't carry the tech tree, so the calculator had no way to know.
-
-**Fix:** added an explicit `production_planets` allowlist field on a curated list of tech-gated recipes, and taught `Planet.allows()` to honour it. When a recipe declares `production_planets`, it is allowed only on those planets.
-
-Applied to:
-
-| Recipe | Allowed planets | Reasoning |
-| --- | --- | --- |
-| `coal-synthesis` | gleba, fulgora, aquilo | Gleba research unlock. Coal is mineable on Nauvis and Vulcanus. |
-| `productivity-module-3` | gleba, fulgora, aquilo | Requires biter-egg (Captivity tech). |
-| `biolab` | gleba, fulgora, aquilo | Requires biter-egg. |
-| `captive-biter-spawner` | gleba, fulgora, aquilo | Captivity tech, Gleba-late. |
-| `biter-egg` | gleba, fulgora, aquilo | Produced by Captive biter spawner. |
-
-Behaviour now matches player experience:
-
-- **Nauvis-only (default):** coal comes from a mining drill; no biter-eggs in red-circuit chains.
-- **Gleba selected:** all five recipes re-enable.
-- **Nauvis + Gleba:** intersection of disables, so all five re-enable.
-
-Managed through a small annotation script (`tools/annotate-production-planets.py`) so future updates can extend the allowlist without hand-editing the 700 KB dataset.
-
-Validated with: dataset validator (clean), 124 unit tests (all pass, 6 new), smoke + deep smoke (clean), and live multi-planet selection check (`coal-synthesis` toggles correctly).
-
 ## 2026-06-23 — Fix: beacon module-slot icon showed pump
 
 In the Settings panel and in every recipe row's beacon column, the "no module" placeholder icon was rendering as a **pump** sprite instead of an empty module slot.
