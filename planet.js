@@ -30,6 +30,16 @@ class Planet {
         if (recipe.isResource()) {
             return this.resources.has(recipe)
         }
+        // Soft planet preference: some recipes have obviously-better
+        // alternatives on certain planets (e.g. coal-synthesis vs coal
+        // mining on Nauvis/Vulcanus). When a recipe declares
+        // production_planets, it's disabled by default on planets not in
+        // the list. Users can still re-enable it manually via Settings.
+        if (recipe.productionPlanets && recipe.productionPlanets.size > 0) {
+            if (!recipe.productionPlanets.has(this.key)) {
+                return false
+            }
+        }
         for (let condition of recipe.conditions) {
             let value = this.properties.get(condition.property)
             if (value === undefined) {

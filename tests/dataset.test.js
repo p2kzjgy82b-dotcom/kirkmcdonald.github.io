@@ -238,3 +238,36 @@ describe("singletons & lists", () => {
         expect(data.rocket_silo[0].key).toBe("rocket-silo")
     })
 })
+
+describe("production_planets annotations", () => {
+    // Soft planet preference: recipe is enabled by default only on the
+    // listed planets. User can re-enable manually on any planet via
+    // Settings. See planet.js Planet.allows().
+    const EXPECTED = {
+        // Coal is mineable on Nauvis & Vulcanus; coal-synthesis is the
+        // natural choice only where there's no native coal.
+        "coal-synthesis": ["gleba", "fulgora", "aquilo"],
+    }
+    for (const [key, allowed] of Object.entries(EXPECTED)) {
+        it(`${key} prefers ${allowed.join(", ")}`, () => {
+            const r = data.recipes.find((x) => x.key === key)
+            expect(r, `recipe ${key} missing`).toBeDefined()
+            expect(r.production_planets).toEqual(allowed)
+        })
+    }
+    it("each preferred planet exists", () => {
+        const planetKeys = new Set(data.planets.map((p) => p.key))
+        for (const allowed of Object.values(EXPECTED)) {
+            for (const p of allowed) {
+                expect(planetKeys.has(p), `unknown planet ${p}`).toBe(true)
+            }
+        }
+    })
+    it("biter-egg recipes are NOT planet-restricted (available everywhere after tech)", () => {
+        for (const key of ["biter-egg", "captive-biter-spawner", "biolab", "productivity-module-3"]) {
+            const r = data.recipes.find((x) => x.key === key)
+            expect(r, `recipe ${key} missing`).toBeDefined()
+            expect(r.production_planets, `${key} should not be planet-gated`).toBeUndefined()
+        }
+    })
+})

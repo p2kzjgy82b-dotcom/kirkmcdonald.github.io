@@ -2,6 +2,33 @@
 
 This branch refreshes the Space Age dataset from 2.0.55 → **2.0.77** and adds a project-hygiene baseline (package.json, ESLint, Vitest, GitHub Actions CI).
 
+## 2026-06-23 — Prefer coal mining over coal synthesis on planets with native coal
+
+On a fresh load (Nauvis selected by default), the calculator was picking **`coal-synthesis`** (carbon + sulfur + water → coal) as the default coal source instead of the mining recipe. The chain was confusing: requesting coal pulled in carbon, sulfur, and a water loop.
+
+**Root cause:** `item.recipes` for coal lists `coal-synthesis` before the `coal` mining recipe (recipes are registered in dataset order). The target dropdown picks `recipes[0]` among non-disabled producers, so synthesis won the default. Hard-disabling `coal-synthesis` was tempting, but it would block players who legitimately want it once they've researched coal-synthesis on Gleba (it's available everywhere after research).
+
+**Fix:** added a soft planet-preference mechanism. A new optional `production_planets` field on a recipe disables it by default on planets not in the list, but it can be re-enabled manually via the Settings panel (and re-enable state is persisted in the URL just like any other recipe enable).
+
+Applied only to:
+
+| Recipe | Preferred on | Reasoning |
+| --- | --- | --- |
+| `coal-synthesis` | gleba, fulgora, aquilo | Coal is mineable on Nauvis and Vulcanus, so synthesis is only the natural choice on planets with no native coal. |
+
+Deliberately NOT applied to biter-egg / `captive-biter-spawner` / `biolab` / `productivity-module-3` — these are available on any planet after Captivity research, and the player is the better judge of when their own tech tree unlocks them. The biter-eggs-in-red-circuits annoyance comes from default module suggestions and is a separate concern.
+
+Behaviour:
+
+- **Nauvis (default):** coal comes from a mining drill; `coal-synthesis` hidden until the user re-enables it.
+- **Vulcanus:** same as Nauvis (Vulcanus also has native coal patches).
+- **Gleba / Fulgora / Aquilo:** `coal-synthesis` is enabled (no native coal).
+- **Override:** clicking `coal-synthesis` in Settings re-enables it on any planet; the choice persists in the URL via the `enable` parameter.
+
+Managed through `tools/annotate-production-planets.py` so the allowlist is easy to extend later.
+
+Validated with: dataset validator (clean), 121 unit tests (all pass, 3 new), smoke + deep smoke (clean), and live multi-planet selection check (toggling works, manual re-enable works).
+
 ## 2026-06-23 — Fix: beacon module-slot icon showed pump
 
 In the Settings panel and in every recipe row's beacon column, the "no module" placeholder icon was rendering as a **pump** sprite instead of an empty module slot.
