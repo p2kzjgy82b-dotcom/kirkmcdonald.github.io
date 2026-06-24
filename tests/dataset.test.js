@@ -238,3 +238,32 @@ describe("singletons & lists", () => {
         expect(data.rocket_silo[0].key).toBe("rocket-silo")
     })
 })
+
+describe("production_planets annotations", () => {
+    // These recipes are practically gated by tech/research to specific
+    // planets. Without an explicit allowlist, the solver picks them on
+    // Nauvis-only and the user sees biter-eggs in red-circuit chains,
+    // carbon-derived coal, etc. See planet.js Planet.allows().
+    const EXPECTED = {
+        "coal-synthesis":        ["gleba", "fulgora", "aquilo"],
+        "productivity-module-3": ["gleba", "fulgora", "aquilo"],
+        "biolab":                ["gleba", "fulgora", "aquilo"],
+        "captive-biter-spawner": ["gleba", "fulgora", "aquilo"],
+        "biter-egg":             ["gleba", "fulgora", "aquilo"],
+    }
+    for (const [key, allowed] of Object.entries(EXPECTED)) {
+        it(`${key} is allowlisted to ${allowed.join(", ")}`, () => {
+            const r = data.recipes.find((x) => x.key === key)
+            expect(r, `recipe ${key} missing`).toBeDefined()
+            expect(r.production_planets).toEqual(allowed)
+        })
+    }
+    it("each allowed planet exists", () => {
+        const planetKeys = new Set(data.planets.map((p) => p.key))
+        for (const allowed of Object.values(EXPECTED)) {
+            for (const p of allowed) {
+                expect(planetKeys.has(p), `unknown planet ${p}`).toBe(true)
+            }
+        }
+    })
+})

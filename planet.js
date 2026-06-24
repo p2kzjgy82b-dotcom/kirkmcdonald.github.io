@@ -30,6 +30,16 @@ class Planet {
         if (recipe.isResource()) {
             return this.resources.has(recipe)
         }
+        // Curated allowlist: some recipes are practically gated by
+        // tech/research to specific planets (e.g. coal-synthesis is a
+        // Gleba unlock; biter-egg-consuming recipes require Captivity).
+        // If a recipe declares production_planets, hide it on any planet
+        // not in that list.
+        if (recipe.productionPlanets && recipe.productionPlanets.size > 0) {
+            if (!recipe.productionPlanets.has(this.key)) {
+                return false
+            }
+        }
         for (let condition of recipe.conditions) {
             let value = this.properties.get(condition.property)
             if (value === undefined) {
