@@ -247,6 +247,23 @@ describe("production_planets annotations", () => {
         // Coal is mineable on Nauvis & Vulcanus; coal-synthesis is the
         // natural choice only where there's no native coal.
         "coal-synthesis": ["gleba", "fulgora", "aquilo"],
+
+        // Foundry casting recipes are the Vulcanus default; Nauvis prefers
+        // the conventional smelting/crafting alternative. Re-enableable
+        // anywhere via Settings.
+        "casting-iron":                  ["vulcanus"],
+        "casting-copper":                ["vulcanus"],
+        "casting-steel":                 ["vulcanus"],
+        "casting-iron-gear-wheel":       ["vulcanus"],
+        "casting-iron-stick":            ["vulcanus"],
+        "casting-copper-cable":          ["vulcanus"],
+        "casting-pipe":                  ["vulcanus"],
+        "casting-pipe-to-ground":        ["vulcanus"],
+        "casting-low-density-structure": ["vulcanus"],
+
+        // Lava-based molten metal is Vulcanus-only (no lava on other planets).
+        "molten-iron-from-lava":         ["vulcanus"],
+        "molten-copper-from-lava":       ["vulcanus"],
     }
     for (const [key, allowed] of Object.entries(EXPECTED)) {
         it(`${key} prefers ${allowed.join(", ")}`, () => {
@@ -265,6 +282,36 @@ describe("production_planets annotations", () => {
     })
     it("biter-egg recipes are NOT planet-restricted (available everywhere after tech)", () => {
         for (const key of ["biter-egg", "captive-biter-spawner", "biolab", "productivity-module-3"]) {
+            const r = data.recipes.find((x) => x.key === key)
+            expect(r, `recipe ${key} missing`).toBeDefined()
+            expect(r.production_planets, `${key} should not be planet-gated`).toBeUndefined()
+        }
+    })
+
+    it("every annotated casting-* recipe has a non-foundry counterpart producing the same item", () => {
+        // This guards against the dataset evolving so that a casting recipe
+        // becomes the only producer of an item -- if that ever happens,
+        // gating it to Vulcanus would make the item unproducible on Nauvis.
+        const recipeByKey = new Map(data.recipes.map((r) => [r.key, r]))
+        for (const key of Object.keys(EXPECTED)) {
+            if (!key.startsWith("casting-")) continue
+            const casting = recipeByKey.get(key)
+            const products = casting.products || casting.results || []
+            expect(products.length, `${key} has no products`).toBeGreaterThan(0)
+            const productName = products[0].name
+            const alternates = data.recipes.filter((r) => {
+                if (r.key === key) return false
+                if (r.category === "metallurgy") return false
+                if (r.key.endsWith("-recycling")) return false
+                const ps = r.products || r.results || []
+                return ps.some((p) => p.name === productName)
+            })
+            expect(alternates.length, `${key}: no non-foundry alternative producing ${productName}`).toBeGreaterThan(0)
+        }
+    })
+
+    it("ore-based molten-iron / molten-copper recipes are NOT planet-gated (foundries work anywhere)", () => {
+        for (const key of ["molten-iron", "molten-copper"]) {
             const r = data.recipes.find((x) => x.key === key)
             expect(r, `recipe ${key} missing`).toBeDefined()
             expect(r.production_planets, `${key} should not be planet-gated`).toBeUndefined()

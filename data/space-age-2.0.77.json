@@ -6631,7 +6631,10 @@
       ],
       "order": "b[casting]-f[casting-pipe]",
       "subgroup": "energy-pipe-distribution",
-      "allow_productivity": false
+      "allow_productivity": false,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "casting-pipe-to-ground",
@@ -6660,7 +6663,10 @@
       ],
       "order": "b[casting]-g[casting-pipe-to-ground]",
       "subgroup": "energy-pipe-distribution",
-      "allow_productivity": false
+      "allow_productivity": false,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "pump",
@@ -12981,7 +12987,10 @@
       ],
       "order": "a[melting]-a[lava-a]",
       "subgroup": "vulcanus-processes",
-      "allow_productivity": true
+      "allow_productivity": true,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "molten-copper-from-lava",
@@ -13014,7 +13023,10 @@
       ],
       "order": "a[melting]-a[lava-b]",
       "subgroup": "vulcanus-processes",
-      "allow_productivity": true
+      "allow_productivity": true,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "molten-iron",
@@ -13097,7 +13109,10 @@
       ],
       "order": "b[casting]-a[casting-iron]",
       "subgroup": "vulcanus-processes",
-      "allow_productivity": true
+      "allow_productivity": true,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "casting-copper",
@@ -13122,7 +13137,10 @@
       ],
       "order": "b[casting]-b[casting-copper]",
       "subgroup": "vulcanus-processes",
-      "allow_productivity": true
+      "allow_productivity": true,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "casting-steel",
@@ -13147,7 +13165,10 @@
       ],
       "order": "b[casting]-c[casting-steel]",
       "subgroup": "vulcanus-processes",
-      "allow_productivity": true
+      "allow_productivity": true,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "casting-iron-gear-wheel",
@@ -13172,7 +13193,10 @@
       ],
       "order": "b[casting]-d[casting-iron-gear-wheel]",
       "subgroup": "vulcanus-processes",
-      "allow_productivity": true
+      "allow_productivity": true,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "casting-iron-stick",
@@ -13197,7 +13221,10 @@
       ],
       "order": "b[casting]-e[casting-iron-stick]",
       "subgroup": "vulcanus-processes",
-      "allow_productivity": true
+      "allow_productivity": true,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "casting-low-density-structure",
@@ -13230,7 +13257,10 @@
       ],
       "order": "b[casting]-f[low-density-structure]",
       "subgroup": "vulcanus-processes",
-      "allow_productivity": true
+      "allow_productivity": true,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "concrete-from-molten-iron",
@@ -13288,7 +13318,10 @@
       ],
       "order": "b[casting]-h[casting-copper-cable]",
       "subgroup": "vulcanus-processes",
-      "allow_productivity": true
+      "allow_productivity": true,
+      "production_planets": [
+        "vulcanus"
+      ]
     },
     {
       "key": "tungsten-ore-recycling",

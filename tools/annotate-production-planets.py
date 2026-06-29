@@ -28,6 +28,30 @@ PRODUCTION_PLANETS = {
     # + water) is an inefficient/circular fallback that's the natural choice
     # only on planets with no native coal: Gleba, Fulgora, Aquilo.
     "coal-synthesis": ["gleba", "fulgora", "aquilo"],
+
+    # Foundry casting recipes. Each of these has a smelting- or
+    # crafting-category alternative that produces the same item. The casting
+    # path is the natural Vulcanus default (foundry + molten metal pipeline),
+    # while Nauvis/other planets default to the conventional recipe. Users
+    # can still re-enable casting recipes manually on any planet via Settings
+    # once they have a foundry available.
+    "casting-iron":                  ["vulcanus"],
+    "casting-copper":                ["vulcanus"],
+    "casting-steel":                 ["vulcanus"],
+    "casting-iron-gear-wheel":       ["vulcanus"],
+    "casting-iron-stick":            ["vulcanus"],
+    "casting-copper-cable":          ["vulcanus"],
+    "casting-pipe":                  ["vulcanus"],
+    "casting-pipe-to-ground":        ["vulcanus"],
+    "casting-low-density-structure": ["vulcanus"],
+
+    # The lava-based molten-metal recipes are Vulcanus-exclusive in practice
+    # (no lava elsewhere). Default them to Vulcanus only so Nauvis doesn't
+    # suggest a pipeline that can't be built. The ore-based molten-iron /
+    # molten-copper recipes (ore + calcite) are NOT gated -- they work
+    # anywhere a foundry exists.
+    "molten-iron-from-lava":         ["vulcanus"],
+    "molten-copper-from-lava":       ["vulcanus"],
 }
 
 def main():
