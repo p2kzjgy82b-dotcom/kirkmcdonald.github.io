@@ -444,6 +444,103 @@ svg.popout {
     overflow-y: scroll;
     transition: height 0.3s;
 }
+/* per-row recipe picker */
+.recipe-picker-caret {
+    display: inline-block;
+    margin-left: 1px;
+    font-size: 10px;
+    line-height: 1;
+    color: var(--accent);
+    cursor: pointer;
+    user-select: none;
+    vertical-align: middle;
+    opacity: 0.65;
+    transition: opacity 0.1s;
+}
+.recipe-picker-caret:hover,
+.recipe-picker-anchor:hover + .recipe-picker-caret {
+    opacity: 1;
+}
+.recipe-picker-anchor {
+    outline: none;
+}
+.recipe-picker-popover {
+    position: absolute;
+    z-index: 1000;
+    background: var(--dark);
+    border: 2px solid var(--accent);
+    border-radius: 5px;
+    padding: 6px 8px;
+    min-width: 280px;
+    max-width: 480px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+    font-size: 13px;
+}
+.recipe-picker-title {
+    font-weight: bold;
+    margin-bottom: 6px;
+    border-bottom: 1px solid var(--light);
+    padding-bottom: 4px;
+}
+.recipe-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.recipe-picker-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 5px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    cursor: pointer;
+}
+.recipe-picker-row:hover {
+    background: var(--medium);
+}
+.recipe-picker-row.active {
+    border-color: var(--accent);
+    background: var(--medium);
+}
+.recipe-picker-row:not(.enabled) {
+    opacity: 0.55;
+}
+.recipe-picker-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+}
+.recipe-picker-label {
+    flex: 1 1 auto;
+}
+.recipe-picker-status {
+    flex: 0 0 auto;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.75;
+}
+.recipe-picker-row.active .recipe-picker-status {
+    color: var(--accent);
+    opacity: 1;
+}
+.recipe-picker-hint {
+    margin-top: 6px;
+    padding-top: 4px;
+    border-top: 1px solid var(--light);
+    font-size: 11px;
+    opacity: 0.65;
+}
+.recipe-picker-warning {
+    margin-top: 4px;
+    padding: 3px 5px;
+    border-radius: 3px;
+    background: #5a2d2d;
+    color: #ffd0d0;
+    font-size: 11px;
+}
+
 /* about */
 .about-content {
     max-width: 40em;

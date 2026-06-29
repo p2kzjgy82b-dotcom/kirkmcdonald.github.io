@@ -19,6 +19,7 @@ import { Icon } from "./icon.js"
 import { useLegacyCalculation } from "./init.js"
 import { moduleRows, moduleDropdown } from "./module.js"
 import { Rational, zero, one } from "./rational.js"
+import { attachRecipePicker } from "./recipe-picker.js"
 
 let powerSuffixes = ["\u00A0W", "kW", "MW", "GW", "TW", "PW"]
 
@@ -648,6 +649,10 @@ export function displayItems(spec, totals) {
     buildingCell.append(d => d.building.icon.make(32))
     buildingCell.append("span")
         .text(" \u00d7")
+    // Per-row recipe picker. Adds a ▾ affordance next to the recipe icon
+    // (or building icon when the row is single-recipe) when the item has
+    // alternative producing recipes. See recipe-picker.js.
+    attachRecipePicker(buildingCell)
     buildingRow.selectAll("tt.building-count")
         .text(d => spec.format.alignCount(spec.getCount(d.recipe, totals.rates.get(d.recipe))))
     let moduleRow = row.filter(d => d.moduleSpec !== null)

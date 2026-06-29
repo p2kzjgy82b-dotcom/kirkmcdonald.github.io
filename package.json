@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "validate:dataset": "node tools/validate-dataset.js",
     "serve": "python3 -m http.server 8000",
-    "smoke": "node tools/smoke-test.js"
+    "smoke": "node tools/smoke-test.js",
+    "smoke:picker": "node tools/smoke-recipe-picker.js"
   },
   "engines": {
     "node": ">=20"
