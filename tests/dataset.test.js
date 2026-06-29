@@ -318,3 +318,70 @@ describe("production_planets annotations", () => {
         }
     })
 })
+
+describe("crafting machine categories match authoritative game data", () => {
+    // Canonical crafting_categories per machine, derived from:
+    //  - https://github.com/wube/factorio-data (Wube official prototypes)
+    //  - https://github.com/KirkMcDonald/kirkmcdonald.github.io data/space-age-2.0.55.json
+    //
+    // Guards against regressions where machines like foundry or
+    // electromagnetic-plant pick up a stray "crafting" or "crafting-with-fluid"
+    // category and end up offered as a producer for unrelated recipes
+    // (e.g. red science showing up as foundry-buildable).
+    const CANONICAL = {
+        "stone-furnace":         ["smelting"],
+        "steel-furnace":         ["smelting"],
+        "electric-furnace":      ["smelting"],
+        "foundry":               ["crafting-with-fluid-or-metallurgy", "metallurgy", "metallurgy-or-assembling", "pressing"],
+        "recycler":              ["recycling", "recycling-or-hand-crafting"],
+        "biochamber":            ["organic", "organic-or-assembling", "organic-or-chemistry", "organic-or-hand-crafting"],
+        "captive-biter-spawner": ["captive-spawner-process"],
+        "assembling-machine-1":  ["advanced-crafting", "basic-crafting", "crafting", "electronics", "pressing"],
+        "assembling-machine-2":  ["advanced-crafting", "basic-crafting", "crafting", "crafting-with-fluid", "crafting-with-fluid-or-metallurgy", "cryogenics-or-assembling", "electronics", "electronics-or-assembling", "electronics-with-fluid", "metallurgy-or-assembling", "organic-or-assembling", "organic-or-hand-crafting", "pressing"],
+        "assembling-machine-3":  ["advanced-crafting", "basic-crafting", "crafting", "crafting-with-fluid", "crafting-with-fluid-or-metallurgy", "cryogenics-or-assembling", "electronics", "electronics-or-assembling", "electronics-with-fluid", "metallurgy-or-assembling", "organic-or-assembling", "organic-or-hand-crafting", "pressing"],
+        "oil-refinery":          ["oil-processing"],
+        "chemical-plant":        ["chemistry", "chemistry-or-cryogenics", "organic-or-chemistry"],
+        "centrifuge":            ["centrifuging"],
+        "electromagnetic-plant": ["electromagnetics", "electronics", "electronics-or-assembling", "electronics-with-fluid"],
+        "cryogenic-plant":       ["chemistry-or-cryogenics", "cryogenics", "cryogenics-or-assembling"],
+        "crusher":               ["crushing"],
+        "character":             ["crafting", "electronics", "organic-or-assembling", "organic-or-hand-crafting", "pressing", "recycling-or-hand-crafting"],
+    }
+
+    for (const [key, expected] of Object.entries(CANONICAL)) {
+        it(`${key} has correct crafting_categories`, () => {
+            const m = data.crafting_machines.find((x) => x.key === key)
+            expect(m, `machine ${key} missing`).toBeDefined()
+            expect([...m.crafting_categories].sort()).toEqual([...expected].sort())
+        })
+    }
+
+    it("foundry does NOT produce automation-science-pack (red science)", () => {
+        const foundry = data.crafting_machines.find((x) => x.key === "foundry")
+        const redScience = data.recipes.find((x) => x.key === "automation-science-pack")
+        expect(foundry).toBeDefined()
+        expect(redScience).toBeDefined()
+        expect(
+            foundry.crafting_categories.includes(redScience.category),
+            `foundry should not be able to craft ${redScience.category} recipes`,
+        ).toBe(false)
+    })
+
+    it("foundry does NOT include generic 'crafting' or 'crafting-with-fluid'", () => {
+        const foundry = data.crafting_machines.find((x) => x.key === "foundry")
+        expect(foundry.crafting_categories).not.toContain("crafting")
+        expect(foundry.crafting_categories).not.toContain("crafting-with-fluid")
+    })
+
+    it("electromagnetic-plant does NOT include generic 'crafting' or 'crafting-with-fluid'", () => {
+        const em = data.crafting_machines.find((x) => x.key === "electromagnetic-plant")
+        expect(em.crafting_categories).not.toContain("crafting")
+        expect(em.crafting_categories).not.toContain("crafting-with-fluid")
+    })
+
+    it("biochamber does NOT include 'chemistry' or 'crafting-with-fluid'", () => {
+        const bc = data.crafting_machines.find((x) => x.key === "biochamber")
+        expect(bc.crafting_categories).not.toContain("chemistry")
+        expect(bc.crafting_categories).not.toContain("crafting-with-fluid")
+    })
+})
